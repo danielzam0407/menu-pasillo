@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+html, body { margin: 0; padding: 0; background: #050d16; }
+a { color: #8fdcff; } a:hover { color: #eaf6ff; }
+</style>
+<script src="./image-slot.js"></script>
+<script>window.OM_SCENES = '[{"name":"Inicio","dur":5,"desc":"Pantalla de título sobre el pasillo y aparición del menú"},{"name":"Sobre mi","dur":7,"desc":"El cursor elige Sobre mí, se camina por el pasillo y se entra a la habitación"},{"name":"Portafolio","dur":7,"desc":"Se entra a la habitación de Portafolio con tres proyectos"},{"name":"Experiencia","dur":7,"desc":"Se entra a la habitación de Experiencia con la línea de tiempo"},{"name":"Blog","dur":7,"desc":"Se entra a la habitación del Blog con las últimas notas"},{"name":"Contacto","dur":6,"desc":"Se entra a la habitación de Contacto"},{"name":"Cierre","dur":1,"desc":"Regreso al punto de inicio para cerrar el loop"}]';</script>
+<script>window.OM_PLAYBACK = '{"mode":"loop"}';</script>
+<script>window.TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "motionEditor": true,
+  "sonido": false,
+  "acento": "#8fdcff"
+}/*EDITMODE-END*/;</script>
+</helmet>
+<x-import component-from-global-scope="MenuPasillo" from="./animations-v3.jsx ./tweaks-panel.jsx ./menu-pasillo.jsx" hint-size="100%,720px"></x-import>
+</x-dc>
+</body>
+</html>

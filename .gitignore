@@ -1,0 +1,4 @@
+node_modules/
+dist/
+vendor/
+.image-slots.state.json
