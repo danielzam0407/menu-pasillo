@@ -10,23 +10,14 @@ const Easing = window.Easing || {
   easeOutBack: t => { const c = 1.70158; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); },
 };
 const clamp = window.clamp || ((v, a, b) => Math.min(b, Math.max(a, v)));
-// El modo interactivo se publica sin el panel de tweaks (es una herramienta de
-// autoría, no del sitio), así que cada control cae a un equivalente inerte.
-const NOOP_PANEL = ({children}) => null;
-const useTweaks = window.useTweaks || function useTweaksFallback(defs){
-  const [v, setV] = React.useState(defs || {});
-  return [v, (k, val) => setV(p => ({...p, [k]: val}))];
-};
-const TweaksPanel = window.TweaksPanel || NOOP_PANEL;
-const TweakSection = window.TweakSection || NOOP_PANEL;
-const TweakToggle = window.TweakToggle || NOOP_PANEL;
-const TweakColor = window.TweakColor || NOOP_PANEL;
+const {useTweaks, TweaksPanel, TweakSection, TweakToggle, TweakColor} = window;
 
 const W = 1920, H = 1080;
+const BG = 'uploads/pasted-1787525265126-0.png';
 const NAVY = '#050d16', INK = '#eaf6ff';
 const DIM = 'rgba(206,232,252,0.62)', FAINT = 'rgba(206,232,252,0.26)';
 const FONT = "'Outfit','Helvetica Neue',sans-serif";
-const ITEM_X = 150, ITEM_Y0 = 486, STEP = 62;
+const ITEM_X = 150, ITEM_Y0 = 486, STEP = 74;
 const MENUS = [
   {id:'sobre', label:'Sobre mí', num:'01', cue:'Sobre mi'},
   {id:'portafolio', label:'Portafolio', num:'02', cue:'Portafolio'},
@@ -35,64 +26,6 @@ const MENUS = [
   {id:'contacto', label:'Contacto', num:'05', cue:'Contacto'},
 ];
 const SEL = 0.9, WEND = 3.1, EXIT_PAD = 1.25;
-
-/* ═══ CONTENIDO ═══════════════════════════════════════════════════════════
-   Todo el texto del sitio vive aquí — es lo único que hay que editar para
-   llenar el portafolio. Las fotos se arrastran sobre cada <image-slot>, o se
-   ponen aquí con una URL en el campo `foto` / `avatar`.                    */
-const CONTENT = {
-  nombre: 'DANIEL',
-  apellido: 'SITE',
-  tagline: 'Portafolio personal — MMXXVI',
-  sobre: {
-    texto: 'Texto placeholder: quién eres, qué haces y qué te mueve. Dos o tres líneas bastan en esta pantalla.',
-    stats: [['+6', 'años creando'], ['24', 'proyectos'], ['MX', 'base']],
-    foto: '',
-  },
-  proyectos: [
-    {nombre: 'Nombre del proyecto', meta: 'Disciplina · Año', foto: ''},
-    {nombre: 'Nombre del proyecto', meta: 'Disciplina · Año', foto: ''},
-    {nombre: 'Nombre del proyecto', meta: 'Disciplina · Año', foto: ''},
-  ],
-  experiencia: [
-    ['2024 — HOY', 'Rol placeholder', 'Empresa · Ciudad'],
-    ['2021 — 2024', 'Rol anterior', 'Empresa · Ciudad'],
-    ['2019 — 2021', 'Primer rol', 'Empresa · Ciudad'],
-  ],
-  fotoExperiencia: '',
-  blog: [
-    ['AGO 2026', 'Título de la última nota del blog'],
-    ['JUL 2026', 'Otra nota placeholder sobre proceso'],
-    ['JUN 2026', 'Apuntes de un proyecto reciente'],
-  ],
-  fotoBlog: '',
-  contacto: {
-    email: 'hola@danielsite.mx',
-    avatar: '',
-    redes: [
-      {nombre: 'GitHub', url: '#'},
-      {nombre: 'LinkedIn', url: '#'},
-      {nombre: 'Instagram', url: '#'},
-    ],
-  },
-};
-
-/* ═══ RITMO ═══════════════════════════════════════════════════════════════
-   Duraciones del modo interactivo, en segundos. Suben o bajan el "cine" del
-   sitio sin tocar la coreografía: cada animación se deriva de estos números.
-   Los valores originales eran caminar 2.2, salir 1.25, fundido 1.4 — bonito
-   de ver una vez, largo de aguantar cinco veces seguidas.                  */
-const RITMO = {
-  caminar: 1.15,           // clic → llegar a la puerta
-  girar: 0.62,             // giro hacia la habitación, al final de la caminata
-  salir: 0.7,              // habitación → pasillo
-  retardoSalida: 0.12,     // pausa antes de que arranque la salida
-  fundidoMenu: 0.45,       // marca y menú entrando y saliendo
-  entradaHabitacion: 2.0,  // cuánto dura, ya de pie, el armado de la habitación
-  brilloPuerta: 0.45,      // la puerta elegida se enciende: es el acuse del clic
-};
-const ROOM_T = 3.6;        // segundos "de autor" que abarca la coreografía interna
-/* ═════════════════════════════════════════════════════════════════════════ */
 
 function tri(t, a, p, b){ if (!(t > a && t < b)) return 0; return t < p ? (t - a) / (p - a) : 1 - (t - p) / (b - p); }
 const MOTION = {
@@ -114,24 +47,6 @@ const AC = {
 
 const CORR = {w:1400, h:1100, depth:5200, wallX:700, floorY:550};
 const DOORS = MENUS.map((m, i) => ({...m, side: i % 2 === 0 ? -1 : 1, z: 750 + i * 850}));
-
-// Las escenas 3D se dibujan siempre en la retícula de 1920x1080 en la que
-// fueron compuestas y se escalan para cubrir la pantalla. Dos razones: el
-// encuadre queda igual en cualquier monitor (perspective-origin deja de
-// depender del tamaño del viewport), y el navegador rasteriza los planos —
-// que suman decenas de megapíxeles — a la escala del contenedor y no a 1:1.
-const EscalaEscena = React.createContext(1);
-const cubrir = (w, h) => Math.max(w / W, h / H);
-
-function Escena({perspectiva, origen, children}){
-  const escala = React.useContext(EscalaEscena);
-  return (
-    <div style={{position:'absolute', left:'50%', top:'50%', width:W, height:H, marginLeft:-W / 2, marginTop:-H / 2,
-      transform:`scale(${escala})`, perspective:perspectiva, perspectiveOrigin:origen}}>
-      {children}
-    </div>
-  );
-}
 
 function flashPulse(t, peak, rise, fall){
   if (t <= peak - rise || t >= peak + fall) return 0;
@@ -198,51 +113,52 @@ function Plane({w, h, t, style, children}){
   return <div style={{position:'absolute', left:0, top:0, width:w, height:h, transform:t, transformOrigin:'0 0', ...style}}>{children}</div>;
 }
 
-function Door({d, x, glow, acento, soft}){
+function Door({d, x, glow, acento, soft, vis}){
+  const tr = soft ? 'opacity 0.6s ease' : undefined;
   return (
     <div style={{position:'absolute', left:x, top:CORR.h - 680, width:340, height:680}}>
       <div style={{position:'absolute', left:0, right:0, top:-74, textAlign:'center', fontSize:26, fontWeight:500,
-        letterSpacing:'0.35em', color:'rgba(206,232,252,0.5)'}}>{d.num}</div>
+        letterSpacing:'0.35em', color:'rgba(206,232,252,0.5)', opacity:vis, transition:tr}}>{d.num}</div>
       <div style={{position:'absolute', inset:0, background:'#061321', border:'2px solid rgba(140,200,255,0.28)',
         boxShadow:'inset 0 0 34px rgba(0,0,0,0.65)'}}>
         <div style={{position:'absolute', left:26, right:26, top:26, bottom:26, border:'1px solid rgba(140,200,255,0.18)'}}/>
         <div style={{position:'absolute', left:0, right:0, bottom:56, textAlign:'center', fontSize:22, fontWeight:300,
-          letterSpacing:'0.3em', textTransform:'uppercase', color:'rgba(206,232,252,0.45)', whiteSpace:'nowrap'}}>{d.label}</div>
+          letterSpacing:'0.3em', textTransform:'uppercase', color:'rgba(206,232,252,0.45)', whiteSpace:'nowrap',
+          opacity:vis, transition:tr}}>{d.label}</div>
         <div style={{position:'absolute', right:34, top:330, width:10, height:56, background:'rgba(140,200,255,0.3)'}}/>
       </div>
       <div style={{position:'absolute', inset:-2, border:`2px solid ${acento}`, opacity:glow, pointerEvents:'none',
-        transition:soft ? `opacity ${RITMO.brilloPuerta}s ease` : undefined,
+        transition:soft ? 'opacity 1.8s ease' : undefined,
         boxShadow:`0 0 70px ${acento}66, inset 0 0 46px rgba(140,220,255,0.16)`}}/>
     </div>
   );
 }
 
-function CorridorPlanes({acento, T, total, live, glowIdx, glowVal, pausado}){
-  const pausa = pausado ? 'paused' : undefined;
+function CorridorPlanes({acento, T, total, live, glowIdx, glowVal, camZ, walkIdx}){
   const {w, h, depth, wallX, floorY} = CORR;
   const wallChk = CHECK('#071624', '#4ea6cf', 260);
   const darkChk = CHECK('#030b14', '#0e2c44', 170);
   const sheenY = live ? 0 : (T / Math.max(total, 1)) * 10400 % 5200;
   const tubes = [0, 1, 2, 3, 4, 5, 6];
   const glowFor = (i) => glowIdx === i ? glowVal : 0;
+  // los rótulos se apagan al pasar junto a la puerta (evita glifos gigantes sobre la UI)
+  const visFor = (d, i) => {
+    if (typeof camZ === 'number') return d.z < camZ + 120 ? 0 : clamp((d.z - camZ - 300) / 380, 0, 1);
+    return walkIdx >= 0 && i < walkIdx ? 0 : 1;
+  };
   return <>
         {/* piso */}
         <Plane w={w} h={depth} t={`translate3d(${-wallX}px, ${floorY}px, ${-depth}px) rotateX(90deg)`} style={{background:'#04101c', overflow:'hidden'}}>
-          {/* El damero girado 45° solo necesita el cuadrado mínimo que cubre el
-              piso: (1400+5200)/√2 ≈ 4667. Estaba a 5800x9600 — 55 Mpx, la mitad
-              del costo de rasterizado de toda la escena. */}
-          <div style={{position:'absolute', left:-1650, top:250, width:4700, height:4700, transform:'rotate(45deg)',
+          <div style={{position:'absolute', left:-2200, top:-2200, width:5800, height:9600, transform:'rotate(45deg)',
             ...CHECK('rgba(70,155,200,0.30)', 'transparent', 380)}}/>
-          <div style={{position:'absolute', right:0, width:520, top:0, bottom:0,
+          <div style={{position:'absolute', right:0, width:520, top:0, bottom:0, filter:'blur(3px)',
             background:'repeating-linear-gradient(to bottom, rgba(190,240,255,0.32) 0 260px, rgba(190,240,255,0.04) 260px 330px)'}}/>
           <div style={{position:'absolute', inset:0, background:'repeating-linear-gradient(70deg, transparent 0 340px, rgba(160,225,255,0.15) 340px 560px)'}}/>
           <div style={{position:'absolute', inset:0, background:'linear-gradient(to right, rgba(3,9,16,0.55), transparent 30%, transparent 62%, rgba(120,200,245,0.10))'}}/>
-          {/* sin mix-blend-mode: el modo de mezcla saca al piso de la ruta
-              rápida de composición y este brillo se anima en bucle */}
           <div style={{position:'absolute', left:0, width:'100%', height:900, top:-900, willChange:'transform',
-            transform:live ? undefined : `translateY(${sheenY}px)`,
-            animation:live ? 'om-sheen 13s linear infinite' : undefined, animationPlayState:pausa,
-            background:'linear-gradient(105deg, transparent 42%, rgba(190,235,255,0.45) 50%, transparent 58%)'}}/>
+            transform:live ? undefined : `translateY(${sheenY}px)`, mixBlendMode:'screen',
+            animation:live ? 'om-sheen 13s linear infinite' : undefined,
+            background:'linear-gradient(105deg, transparent 42%, rgba(190,235,255,0.4) 50%, transparent 58%)'}}/>
         </Plane>
         {/* techo */}
         <Plane w={w} h={depth} t={`translate3d(${-wallX}px, ${-floorY}px, 0) rotateX(-90deg)`} style={{...darkChk}}>
@@ -250,7 +166,7 @@ function CorridorPlanes({acento, T, total, live, glowIdx, glowVal, pausado}){
             <div key={k} style={{position:'absolute', left:w / 2 - 45, top:300 + k * 700, width:90, height:300,
               background:'#cfeeff', boxShadow:'0 0 60px 22px rgba(140,220,255,0.55)',
               opacity:live ? undefined : 0.72 + 0.22 * Math.sin(T * 9 + k * 2.1),
-              animation:live ? 'om-tube 3.4s ease-in-out infinite' : undefined, animationPlayState:pausa,
+              animation:live ? 'om-tube 3.4s ease-in-out infinite' : undefined,
               animationDelay:live ? `${-k * 0.63}s` : undefined}}/>
           ))}
         </Plane>
@@ -263,14 +179,14 @@ function CorridorPlanes({acento, T, total, live, glowIdx, glowVal, pausado}){
           <div style={{position:'absolute', left:0, right:0, bottom:0, height:58, background:'#041019', borderTop:'2px solid rgba(140,200,255,0.22)'}}/>
           {DOORS.filter(d => d.side === -1).map(d => {
             const i = MENUS.findIndex(m => m.id === d.id);
-            return <Door key={d.id} d={d} x={d.z - 170} glow={glowFor(i)} acento={acento} soft={live}/>;
+            return <Door key={d.id} d={d} x={d.z - 170} glow={glowFor(i)} acento={acento} soft={live} vis={visFor(d, i)}/>;
           })}
         </Plane>
         {/* pared derecha (ventanas) */}
         <Plane w={depth} h={h} t={`translate3d(${wallX}px, ${-floorY}px, ${-depth}px) rotateY(-90deg)`} style={{...wallChk}}>
           <div style={{position:'absolute', left:0, right:0, top:110, height:590, overflow:'hidden',
             background:'repeating-linear-gradient(to right, rgba(236,250,255,0.97) 0 264px, #0a2033 264px 330px)',
-            boxShadow:'0 0 70px rgba(200,240,255,0.42)'}}>
+            boxShadow:'0 0 110px rgba(200,240,255,0.4)'}}>
             <div style={{position:'absolute', inset:0, background:'repeating-linear-gradient(to bottom, transparent 0 152px, rgba(10,32,51,0.85) 152px 166px)'}}/>
           </div>
           {[1,2,3,4,5,6,7].map(k => (
@@ -280,13 +196,11 @@ function CorridorPlanes({acento, T, total, live, glowIdx, glowVal, pausado}){
           <div style={{position:'absolute', left:0, right:0, bottom:0, height:58, background:'#041019', borderTop:'2px solid rgba(140,200,255,0.22)'}}/>
           {DOORS.filter(d => d.side === 1).map(d => {
             const i = MENUS.findIndex(m => m.id === d.id);
-            return <Door key={d.id} d={d} x={depth - d.z - 170} glow={glowFor(i)} acento={acento} soft={live}/>;
+            return <Door key={d.id} d={d} x={depth - d.z - 170} glow={glowFor(i)} acento={acento} soft={live} vis={visFor(d, i)}/>;
           })}
         </Plane>
         {/* fondo */}
-        {/* damero ya oscurecido en el color, en vez de un filter: brightness()
-            que obligaría a un buffer aparte para 1.5 Mpx */}
-        <Plane w={w} h={h} t={`translate3d(${-wallX}px, ${-floorY}px, ${-depth + 40}px)`} style={{...CHECK('#010407', '#061119', 170)}}>
+        <Plane w={w} h={h} t={`translate3d(${-wallX}px, ${-floorY}px, ${-depth + 40}px)`} style={{...darkChk, filter:'brightness(0.4)'}}>
           <div style={{position:'absolute', inset:0, background:'rgba(3,9,16,0.88)'}}/>
         </Plane>
   </>;
@@ -299,7 +213,7 @@ function Corridor({cam, T, total, acento, active}){
     <div style={{position:'absolute', inset:0, overflow:'hidden', background:NAVY, perspective:'680px', perspectiveOrigin:'50% 42%'}}>
       <div style={{position:'absolute', left:'50%', top:'50%', transformStyle:'preserve-3d', willChange:'transform',
         transform:`translateY(${cam.bob}px) rotateZ(${cam.roll}deg) rotateY(${-cam.yaw}deg) translateZ(${cam.camZ}px)`}}>
-        <CorridorPlanes acento={acento} T={T} total={total} glowIdx={active} glowVal={glowVal}/>
+        <CorridorPlanes acento={acento} T={T} total={total} glowIdx={active} glowVal={glowVal} camZ={cam.camZ}/>
       </div>
       <div style={{position:'absolute', inset:0, pointerEvents:'none', opacity:fogO,
         background:'radial-gradient(circle 620px at 50% 46%, rgba(4,11,19,0.9) 0%, rgba(4,11,19,0.55) 34%, transparent 68%)'}}/>
@@ -312,44 +226,66 @@ function Brand({T, CUES, outO, acento}){
   const a = MOTION.draw(T, 0.4, 1.0);
   const p = MOTION.draw(T, CUES['Sobre mi'] - 1.0, 1.5);
   return (
-    <div style={{position:'absolute', left:150, top:240 - 148 * p, opacity:a * outO, zIndex:10, transform:'skewX(-6deg)'}}>
-      <div style={{fontSize:84 - 64 * p, fontWeight:200, letterSpacing:(0.16 + 0.14 * p) + 'em', whiteSpace:'nowrap'}}>
-        {CONTENT.nombre} <span style={{fontWeight:500, color:acento}}>{CONTENT.apellido}</span>
+    <div style={{position:'absolute', left:150, top:236 - 148 * p, opacity:a * outO, zIndex:10, transform:'skewX(-6deg)'}}>
+      <div style={{fontSize:84 - 64 * p, fontWeight:200, letterSpacing:(0.16 + 0.14 * p) + 'em', whiteSpace:'nowrap', color:'#f4fcff'}}>
+        DANIEL <span style={{fontWeight:500, color:acento, textShadow:`0 0 38px ${acento}55`}}>SITE</span>
       </div>
-      <div style={{fontSize:15, letterSpacing:'0.45em', color:DIM, marginTop:14, textTransform:'uppercase',
-        opacity:clamp(1 - p * 1.6, 0, 1)}}>{CONTENT.tagline}</div>
+      <div style={{fontSize:15, letterSpacing:'0.45em', color:'rgba(206,232,252,0.58)', marginTop:14, textTransform:'uppercase',
+        opacity:clamp(1 - p * 1.6, 0, 1)}}>Portafolio personal — MMXXVI</div>
     </div>
   );
 }
 
 function MenuUI({T, sections, cam, acento, outO}){
+  const hdr = MOTION.enter(T, 1.7).opacity * outO;
+  const sel = cam.active;
+  const rail = MOTION.enter(T, 1.9).opacity * outO;
   return (
     <div style={{position:'absolute', inset:0, zIndex:10}}>
-      <div style={{position:'absolute', left:ITEM_X, top:ITEM_Y0 - 58, display:'flex', alignItems:'center', gap:12,
-        opacity:MOTION.enter(T, 1.7).opacity * outO}}>
-        <div style={{width:8, height:8, background:acento, transform:'rotate(45deg)'}}/>
-        <span style={{fontSize:12, fontWeight:500, letterSpacing:'0.6em', color:DIM}}>MENÚ</span>
+      <div style={{position:'absolute', left:ITEM_X, top:ITEM_Y0 - 66, display:'flex', alignItems:'center', gap:14, width:540,
+        opacity:hdr}}>
+        <div style={{width:7, height:7, background:acento, transform:'rotate(45deg)', boxShadow:`0 0 16px ${acento}`}}/>
+        <span style={{fontSize:12, fontWeight:500, letterSpacing:'0.62em', color:'rgba(206,232,252,0.72)'}}>MENÚ</span>
+        <div style={{flex:1, height:1, background:'linear-gradient(90deg, rgba(143,220,255,0.34), rgba(143,220,255,0))'}}/>
       </div>
+      <div style={{position:'absolute', left:ITEM_X - 32, top:ITEM_Y0 + 4, width:1, height:4 * STEP + 44, opacity:rail,
+        background:'linear-gradient(180deg, rgba(143,220,255,0.04), rgba(143,220,255,0.2) 18%, rgba(143,220,255,0.2) 82%, rgba(143,220,255,0.04))'}}/>
+      <div style={{position:'absolute', left:ITEM_X - 35, top:ITEM_Y0 + (sel < 0 ? 0 : sel) * STEP + 20, width:7, height:7,
+        background:acento, transform:'rotate(45deg)', boxShadow:`0 0 18px ${acento}`, opacity:(sel < 0 ? 0 : 1) * outO}}/>
       {MENUS.map((m, i) => {
         const s = sections[i];
         let hl = 0;
         if (s && T >= s.start && T < s.start + s.dur) hl = MOTION.draw(T, s.start + 0.4, 0.4);
         const ent = MOTION.enter(T, 2.0 + i * 0.18);
-        const lsp = 0.1 + (cam.active === i ? 0.06 * cam.walkP : 0);
+        const lsp = 0.1 + 0.03 * hl + (cam.active === i ? 0.03 * cam.walkP : 0);
         const on = hl > 0.5;
         return (
-          <div key={m.id} style={{position:'absolute', left:ITEM_X, top:ITEM_Y0 + i * STEP,
-            opacity:ent.opacity * outO, transform:`${ent.transform} translateX(${hl * 22}px) skewX(-10deg)`}}>
-            <div style={{position:'absolute', left:-26, right:-34, top:-8, bottom:-8, opacity:hl,
-              background:'linear-gradient(90deg, #2f86e2, #1c5fb4)', boxShadow:`0 0 38px rgba(70,150,235,${0.55 * hl})`}}/>
-            <div style={{position:'relative', display:'flex', alignItems:'baseline', gap:16}}>
-              <span style={{fontSize:13, fontWeight:600, letterSpacing:'0.2em', color:on ? 'rgba(230,245,255,0.9)' : FAINT, width:30}}>{m.num}</span>
-              <span style={{fontSize:32, fontWeight:on ? 600 : 400, letterSpacing:lsp + 'em', textTransform:'uppercase',
-                color:on ? '#ffffff' : INK, whiteSpace:'nowrap'}}>{m.label}</span>
+          <div key={m.id} style={{position:'absolute', left:ITEM_X, top:ITEM_Y0 + i * STEP, height:52,
+            display:'flex', alignItems:'center', paddingRight:16,
+            opacity:ent.opacity * outO, transform:`${ent.transform} translateX(${hl * 26}px) skewX(-10deg)`}}>
+            <div style={{position:'absolute', left:-30, right:-56, top:0, bottom:0, opacity:hl,
+              background:'linear-gradient(96deg, #1c8fd6 0%, #1758b4 46%, rgba(12,42,88,0) 100%)',
+              boxShadow:`0 0 46px rgba(45,140,225,${0.4 * hl})`}}/>
+            <div style={{position:'absolute', left:-30, top:0, bottom:0, width:4, opacity:hl,
+              background:'#e6f8ff', boxShadow:'0 0 22px rgba(210,244,255,0.85)'}}/>
+            <div style={{position:'relative', display:'flex', alignItems:'baseline', gap:18}}>
+              <span style={{fontSize:13, fontWeight:600, letterSpacing:'0.22em', width:28,
+                color:on ? 'rgba(242,252,255,0.95)' : 'rgba(143,220,255,0.42)'}}>{m.num}</span>
+              <span style={{fontSize:34, fontWeight:on ? 500 : 300, letterSpacing:lsp + 'em', textTransform:'uppercase',
+                color:on ? '#ffffff' : '#cbe4f6', whiteSpace:'nowrap'}}>{m.label}</span>
             </div>
           </div>
         );
       })}
+      <div style={{position:'absolute', left:ITEM_X, top:ITEM_Y0 + 4 * STEP + 92, display:'flex', alignItems:'center', gap:10,
+        opacity:MOTION.enter(T, 2.9).opacity * outO}}>
+        {['1', '2', '3', '4', '5'].map(k => (
+          <span key={k} style={{width:28, height:28, display:'flex', alignItems:'center', justifyContent:'center',
+            fontSize:12, fontWeight:500, color:'rgba(206,232,252,0.6)', transform:'skewX(-10deg)',
+            border:'1px solid rgba(143,220,255,0.22)', background:'rgba(10,28,48,0.5)'}}>{k}</span>
+        ))}
+        <span style={{fontSize:12, letterSpacing:'0.3em', color:FAINT, textTransform:'uppercase', marginLeft:8}}>o clic para entrar</span>
+      </div>
     </div>
   );
 }
@@ -419,13 +355,18 @@ function BackDecor({v, acento}){
   </>;
 }
 
-// La geometría de la habitación no depende del tiempo: memoizada, el rAF de
-// entrada solo re-renderiza el transform de la cámara, no las ~40 caras.
-const RoomGeometry = React.memo(function RoomGeometry({v, acento}){
+function Room3D({rt, v, acento, live}){
+  const drift = Math.min(rt, 10);
+  const push = live ? 90 : 60 * Easing.easeOutCubic(clamp(rt / 2.5, 0, 1)) + drift * 6;
+  const camT = live ? `translateZ(${push}px)` : `rotateY(${Math.sin(rt * 0.35) * 2.2}deg) translateZ(${push}px) translateY(${Math.sin(rt * 0.8) * 3}px)`;
   const wallBg = 'linear-gradient(to bottom, #12304e 0%, #1a4569 58%, #0f2842 100%)';
   const panel = 'repeating-linear-gradient(to right, rgba(150,210,255,0.08) 0 6px, transparent 6px 240px)';
   const sideBg = 'linear-gradient(to bottom, #102941, #1a405e 60%, #0c2136)';
-  return <>
+  return (
+    <div style={{position:'absolute', inset:0, perspective:'900px', perspectiveOrigin:'50% 44%', overflow:'hidden', background:NAVY}}>
+      <div style={{position:'absolute', left:'50%', top:'50%', transformStyle:'preserve-3d', willChange:'transform', transform:camT}}>
+        <div style={{position:'absolute', left:0, top:0, transformStyle:'preserve-3d',
+          animation:live ? 'om-room-drift 18s ease-in-out infinite' : undefined}}>
         <Face w={2600} h={1300} t={'translate3d(-1300px, -650px, -1500px)'} bg={wallBg}>
           <div style={{position:'absolute', inset:0, background:panel}}/>
           <BackDecor v={v} acento={acento}/>
@@ -454,227 +395,156 @@ const RoomGeometry = React.memo(function RoomGeometry({v, acento}){
         <Box3 x={500} z={-1190} w={300} h={300} d={90} ry={-14}/>
         <Box3 x={900} z={-1260} w={120} h={150} d={120}/>
         <Box3 x={945} z={-1250} w={26} h={430} d={26}/>
-  </>;
-});
-
-function Room3D({rt, v, acento, live}){
-  const drift = Math.min(rt, 10);
-  const push = 60 * Easing.easeOutCubic(clamp(rt / 2.5, 0, 1)) + drift * 6;
-  const camT = live ? `translateZ(${push}px)` : `rotateY(${Math.sin(rt * 0.35) * 2.2}deg) translateZ(${push}px) translateY(${Math.sin(rt * 0.8) * 3}px)`;
-  return (
-    <div style={{position:'absolute', inset:0, overflow:'hidden', background:NAVY}}>
-      <Escena perspectiva="900px" origen="50% 44%">
-        <div style={{position:'absolute', left:'50%', top:'50%', transformStyle:'preserve-3d', willChange:'transform', transform:camT}}>
-          <div style={{position:'absolute', left:0, top:0, transformStyle:'preserve-3d',
-            animation:live ? 'om-room-drift 18s ease-in-out infinite' : undefined}}>
-            <RoomGeometry v={v} acento={acento}/>
-          </div>
         </div>
-      </Escena>
+      </div>
       <div style={{position:'absolute', inset:0, background:'radial-gradient(ellipse at 50% 28%, rgba(130,205,255,0.16), transparent 62%)'}}/>
       <div style={{position:'absolute', inset:0, background:'radial-gradient(ellipse at 50% 40%, transparent 55%, rgba(2,8,14,0.32))'}}/>
     </div>
   );
 }
 
-function RoomShell({num, title, rt, rd, acento, live, compact, children}){
+function RoomShell({num, title, rt, rd, acento, live, children}){
   const ent = Easing.easeOutCubic(clamp(rt / 0.8, 0, 1));
   const pull = rd ? Easing.easeInQuad(clamp((rt - (rd - 0.55)) / 0.55, 0, 1)) : 0;
   const scale = (1.10 - 0.10 * ent) * (1 + Math.min(rt, 10) * 0.004) * (1 - 0.05 * pull);
   const cap = MOTION.enter(rt, 0.12);
-  const head = (
-    <div style={compact ? {...cap} : {position:'absolute', left:150, top:130, ...cap}}>
-      <div style={{display:'flex', alignItems:'center', gap:12}}>
-        <div style={{width:8, height:8, background:acento, transform:'rotate(45deg)'}}/>
-        <span style={{fontSize:compact ? 11 : 13, fontWeight:500, letterSpacing:'0.5em', color:DIM}}>HABITACIÓN {num}</span>
-      </div>
-      <div style={{fontSize:compact ? 42 : 92, fontWeight:200, letterSpacing:'0.06em', marginTop:compact ? 10 : 16,
-        transform:'skewX(-6deg)', textShadow:'0 4px 40px rgba(2,8,14,0.9)'}}>{title}</div>
-      <div style={{height:2, width:(compact ? 120 : 220) * MOTION.draw(rt, 0.5, 0.8), background:acento, marginTop:compact ? 14 : 22}}/>
-    </div>
-  );
+  const inner = live
+    ? {animation:'om-room-in 1s cubic-bezier(0.22,1,0.36,1) both'}
+    : {transform:`scale(${scale})`};
   return (
     <div style={{position:'absolute', inset:0, background:NAVY, overflow:'hidden', zIndex:20}}>
-      <div style={{position:'absolute', inset:0, transform:`scale(${scale})`, transformOrigin:'50% 50%'}}>
+      <div style={{position:'absolute', inset:0, transformOrigin:'50% 50%', ...inner}}>
         <Room3D rt={rt} v={parseInt(num, 10)} acento={acento} live={live}/>
-        {!compact && head}
-        {!compact && children}
-      </div>
-      {compact && (
-        <div style={{position:'absolute', inset:0, overflowY:'auto', WebkitOverflowScrolling:'touch',
-          padding:'86px 20px calc(48px + env(safe-area-inset-bottom))'}}>
-          {head}
-          <div style={{marginTop:26}}>{children}</div>
+        <div style={{position:'absolute', left:150, top:130, ...cap}}>
+          <div style={{display:'flex', alignItems:'center', gap:12}}>
+            <div style={{width:8, height:8, background:acento, transform:'rotate(45deg)'}}/>
+            <span style={{fontSize:13, fontWeight:500, letterSpacing:'0.5em', color:DIM}}>HABITACIÓN {num}</span>
+          </div>
+          <div style={{fontSize:92, fontWeight:200, letterSpacing:'0.06em', marginTop:16, transform:'skewX(-6deg)',
+            textShadow:'0 4px 40px rgba(2,8,14,0.9)'}}>{title}</div>
+          <div style={{height:2, width:220 * MOTION.draw(rt, 0.5, 0.8), background:acento, marginTop:22}}/>
         </div>
-      )}
+        {children}
+      </div>
     </div>
   );
 }
 
-function Stat({v, l, acento, compact}){
+function Stat({v, l, acento}){
   return (
     <div>
-      <div style={{fontSize:compact ? 30 : 40, fontWeight:200, color:INK}}>{v}</div>
-      <div style={{fontSize:compact ? 12 : 14, letterSpacing:'0.2em', color:DIM, marginTop:6, textTransform:'uppercase', whiteSpace:'nowrap'}}>{l}</div>
+      <div style={{fontSize:40, fontWeight:200, color:INK}}>{v}</div>
+      <div style={{fontSize:14, letterSpacing:'0.2em', color:DIM, marginTop:6, textTransform:'uppercase', whiteSpace:'nowrap'}}>{l}</div>
     </div>
   );
 }
 
-// Una imagen del portafolio, en los tres contextos donde vive esta pieza:
-// con URL puesta en CONTENT -> <img>; dentro de Claude Design -> <image-slot>
-// (arrastrable); ya publicada y todavía vacía -> un marco con su rótulo, para
-// que la página se vea diseñada y no rota.
-function Slot({id, shape, radius, placeholder, src}){
-  const r = shape === 'circle' ? '50%' : (shape === 'pill' ? '999px' : (radius ? radius + 'px' : '6px'));
-  if (src) return <img src={src} alt={placeholder || ''}
-    style={{width:'100%', height:'100%', objectFit:'cover', borderRadius:r, display:'block'}}/>;
-  if (window.customElements && window.customElements.get('image-slot')){
-    const p = {id, shape, placeholder};
-    if (radius) p.radius = radius;
-    return React.createElement('image-slot', p);
-  }
+function RoomSobre({rt, rd, acento, live}){
   return (
-    <div style={{width:'100%', height:'100%', borderRadius:r, boxSizing:'border-box', padding:16,
-      border:'1px solid rgba(140,200,255,0.22)', display:'flex', alignItems:'center', justifyContent:'center',
-      background:'linear-gradient(140deg, rgba(20,52,82,0.5), rgba(8,22,38,0.75))'}}>
-      <span style={{fontSize:11, letterSpacing:'0.25em', textTransform:'uppercase', color:FAINT, textAlign:'center'}}>{placeholder}</span>
-    </div>
-  );
-}
-
-function RoomSobre({rt, rd, acento, live, compact}){
-  const C = CONTENT.sobre;
-  const txt = (
-    <>
-      <p style={{margin:0, fontSize:compact ? 17 : 24, fontWeight:300, lineHeight:1.7, color:DIM, textWrap:'pretty'}}>{C.texto}</p>
-      <div style={{display:'flex', gap:compact ? 30 : 64, marginTop:compact ? 30 : 52, flexWrap:'wrap'}}>
-        {C.stats.map((s, i) => <Stat key={i} v={s[0]} l={s[1]} acento={acento} compact={compact}/>)}
+    <RoomShell num="01" title="Sobre mí" rt={rt} rd={rd} acento={acento} live={live}>
+      <div style={{position:'absolute', left:150, top:490, width:600, ...MOTION.enter(rt, 0.5)}}>
+        <p style={{margin:0, fontSize:24, fontWeight:300, lineHeight:1.7, color:DIM, textWrap:'pretty'}}>
+          Texto placeholder: quién eres, qué haces y qué te mueve. Dos o tres líneas bastan en esta pantalla.
+        </p>
+        <div style={{display:'flex', gap:64, marginTop:52}}>
+          <Stat v="+6" l="años creando" acento={acento}/>
+          <Stat v="24" l="proyectos" acento={acento}/>
+          <Stat v="MX" l="base" acento={acento}/>
+        </div>
       </div>
-    </>
-  );
-  const img = <Slot id="slot-sobre" shape="rounded" radius="6" placeholder="retrato / ventana con luna" src={C.foto}/>;
-  return (
-    <RoomShell num="01" title="Sobre mí" rt={rt} rd={rd} acento={acento} live={live} compact={compact}>
-      {compact ? <>
-        <div style={{height:'36vh', minHeight:200, ...MOTION.enter(rt, 0.35)}}>{img}</div>
-        <div style={{marginTop:28, ...MOTION.enter(rt, 0.5)}}>{txt}</div>
-      </> : <>
-        <div style={{position:'absolute', left:150, top:490, width:600, ...MOTION.enter(rt, 0.5)}}>{txt}</div>
-        <div style={{position:'absolute', right:140, top:140, bottom:140, width:620, ...MOTION.enter(rt, 0.35)}}>{img}</div>
-      </>}
+      <div style={{position:'absolute', right:140, top:140, bottom:140, width:620, ...MOTION.enter(rt, 0.35)}}>
+        <image-slot id="slot-sobre" shape="rounded" radius="6" placeholder="retrato / ventana con luna"></image-slot>
+      </div>
     </RoomShell>
   );
 }
 
-function RoomPortafolio({rt, rd, acento, live, compact}){
-  const items = CONTENT.proyectos.map((p, i) => ({...p, num:'0' + (i + 1), i}));
-  const card = (p, stacked) => (
-    <div key={p.num} style={{flex:stacked ? undefined : 1, ...MOTION.enter(rt, 0.4 + p.i * 0.16)}}>
-      <div style={{height:stacked ? '30vh' : 300, minHeight:stacked ? 170 : undefined}}>
-        <Slot id={'slot-proyecto-' + p.num} shape="rounded" radius="6" placeholder={'proyecto ' + p.num} src={p.foto}/>
-      </div>
-      <div style={{display:'flex', alignItems:'baseline', gap:14, marginTop:stacked ? 14 : 20}}>
-        <span style={{fontSize:13, fontWeight:500, letterSpacing:'0.2em', color:acento}}>{p.num}</span>
-        <span style={{fontSize:stacked ? 19 : 22, fontWeight:300, color:INK}}>{p.nombre}</span>
-      </div>
-      <div style={{fontSize:stacked ? 14 : 15, color:DIM, marginTop:6}}>{p.meta}</div>
-    </div>
-  );
+function RoomPortafolio({rt, rd, acento, live}){
   return (
-    <RoomShell num="02" title="Portafolio" rt={rt} rd={rd} acento={acento} live={live} compact={compact}>
-      {compact
-        ? <div style={{display:'flex', flexDirection:'column', gap:36}}>{items.map(p => card(p, true))}</div>
-        : <div style={{position:'absolute', left:150, right:150, top:480, display:'flex', gap:36}}>{items.map(p => card(p, false))}</div>}
-    </RoomShell>
-  );
-}
-
-function RoomExperiencia({rt, rd, acento, live, compact}){
-  const XP = CONTENT.experiencia;
-  const linea = (
-    <div style={{display:'flex', flexDirection:'column', gap:compact ? 30 : 44}}>
-      {XP.map((e, i) => (
-        <div key={i} style={{display:'flex', gap:compact ? 18 : 28, ...MOTION.enter(rt, 0.45 + i * 0.18)}}>
-          <div style={{width:3, flex:'none', background:acento, opacity:0.7, transformOrigin:'top',
-            transform:`scaleY(${MOTION.draw(rt, 0.5 + i * 0.18, 0.6)})`}}/>
-          <div>
-            <div style={{fontSize:compact ? 12 : 14, fontWeight:500, letterSpacing:'0.3em', color:acento}}>{e[0]}</div>
-            <div style={{fontSize:compact ? 22 : 30, fontWeight:300, color:INK, marginTop:6}}>{e[1]}</div>
-            <div style={{fontSize:compact ? 15 : 17, color:DIM, marginTop:4}}>{e[2]}</div>
+    <RoomShell num="02" title="Portafolio" rt={rt} rd={rd} acento={acento} live={live}>
+      <div style={{position:'absolute', left:150, right:150, top:480, display:'flex', gap:36}}>
+        {[0,1,2].map(i => (
+          <div key={i} style={{flex:1, ...MOTION.enter(rt, 0.4 + i * 0.16)}}>
+            <div style={{height:300}}>
+              <image-slot id={'slot-proyecto-' + (i + 1)} shape="rounded" radius="6" placeholder={'proyecto 0' + (i + 1)}></image-slot>
+            </div>
+            <div style={{display:'flex', alignItems:'baseline', gap:14, marginTop:20}}>
+              <span style={{fontSize:13, fontWeight:500, letterSpacing:'0.2em', color:acento}}>{'0' + (i + 1)}</span>
+              <span style={{fontSize:22, fontWeight:300, color:INK, whiteSpace:'nowrap'}}>Nombre del proyecto</span>
+            </div>
+            <div style={{fontSize:15, color:DIM, marginTop:6, whiteSpace:'nowrap'}}>Disciplina · Año</div>
           </div>
-        </div>
-      ))}
-    </div>
-  );
-  const img = <Slot id="slot-experiencia" shape="rounded" radius="6" placeholder="foto de tu espacio de trabajo" src={CONTENT.fotoExperiencia}/>;
-  return (
-    <RoomShell num="03" title="Experiencia" rt={rt} rd={rd} acento={acento} live={live} compact={compact}>
-      {compact ? <>
-        {linea}
-        <div style={{height:'30vh', minHeight:180, marginTop:34, ...MOTION.enter(rt, 0.4)}}>{img}</div>
-      </> : <>
-        <div style={{position:'absolute', left:150, top:470}}>{linea}</div>
-        <div style={{position:'absolute', right:140, top:150, bottom:150, width:480, ...MOTION.enter(rt, 0.4)}}>{img}</div>
-      </>}
-    </RoomShell>
-  );
-}
-
-function RoomBlog({rt, rd, acento, live, compact}){
-  const POSTS = CONTENT.blog;
-  const lista = (
-    <div style={{display:'flex', flexDirection:'column'}}>
-      {POSTS.map((p, i) => (
-        <div key={i} style={{padding:compact ? '18px 0' : '26px 0', borderBottom:`1px solid ${FAINT}`,
-          display:'flex', alignItems:'baseline', gap:compact ? 18 : 40, flexWrap:compact ? 'wrap' : 'nowrap',
-          ...MOTION.enter(rt, 0.45 + i * 0.16)}}>
-          <span style={{fontSize:compact ? 12 : 14, fontWeight:500, letterSpacing:'0.25em', color:acento,
-            width:compact ? undefined : 110}}>{p[0]}</span>
-          <span style={{fontSize:compact ? 20 : 30, fontWeight:300, color:INK}}>{p[1]}</span>
-        </div>
-      ))}
-    </div>
-  );
-  const img = <Slot id="slot-blog" shape="rounded" radius="6" placeholder="imagen de la nota destacada" src={CONTENT.fotoBlog}/>;
-  return (
-    <RoomShell num="04" title="Blog" rt={rt} rd={rd} acento={acento} live={live} compact={compact}>
-      {compact ? <>
-        {lista}
-        <div style={{height:'28vh', minHeight:170, marginTop:32, ...MOTION.enter(rt, 0.4)}}>{img}</div>
-      </> : <>
-        <div style={{position:'absolute', left:150, top:480, width:900}}>{lista}</div>
-        <div style={{position:'absolute', right:140, top:460, width:440, height:300, ...MOTION.enter(rt, 0.4)}}>{img}</div>
-      </>}
-    </RoomShell>
-  );
-}
-
-function RoomContacto({rt, rd, acento, live, compact}){
-  const C = CONTENT.contacto;
-  const cuerpo = (
-    <>
-      <div style={{width:compact ? 110 : 150, height:compact ? 110 : 150, flex:'none', ...MOTION.enter(rt, 0.35)}}>
-        <Slot id="slot-contacto" shape="circle" placeholder="tu avatar" src={C.avatar}/>
-      </div>
-      <a href={'mailto:' + C.email} style={{fontSize:compact ? 26 : 72, fontWeight:200, letterSpacing:'0.04em', color:INK,
-        textDecoration:'none', wordBreak:'break-word', textAlign:'center', ...MOTION.enter(rt, 0.5)}}>{C.email}</a>
-      <div style={{display:'flex', gap:compact ? 20 : 44, fontSize:compact ? 13 : 16, letterSpacing:'0.3em', color:DIM,
-        textTransform:'uppercase', flexWrap:'wrap', justifyContent:'center', ...MOTION.enter(rt, 0.68)}}>
-        {C.redes.map((r, i) => (
-          <React.Fragment key={r.nombre}>
-            {i > 0 && <span style={{color:acento}}>·</span>}
-            <a href={r.url} target="_blank" rel="noopener noreferrer" style={{color:'inherit', textDecoration:'none'}}>{r.nombre}</a>
-          </React.Fragment>
         ))}
       </div>
-    </>
+    </RoomShell>
   );
+}
+
+function RoomExperiencia({rt, rd, acento, live}){
+  const XP = [
+    ['2024 — HOY', 'Rol placeholder', 'Empresa · Ciudad'],
+    ['2021 — 2024', 'Rol anterior', 'Empresa · Ciudad'],
+    ['2019 — 2021', 'Primer rol', 'Empresa · Ciudad'],
+  ];
   return (
-    <RoomShell num="05" title="Contacto" rt={rt} rd={rd} acento={acento} live={live} compact={compact}>
-      {compact
-        ? <div style={{display:'flex', flexDirection:'column', alignItems:'center', gap:26, marginTop:'8vh'}}>{cuerpo}</div>
-        : <div style={{position:'absolute', left:0, right:0, top:400, bottom:0, display:'flex', flexDirection:'column',
-            alignItems:'center', justifyContent:'center', gap:34}}>{cuerpo}</div>}
+    <RoomShell num="03" title="Experiencia" rt={rt} rd={rd} acento={acento} live={live}>
+      <div style={{position:'absolute', left:150, top:470, display:'flex', flexDirection:'column', gap:44}}>
+        {XP.map((e, i) => (
+          <div key={i} style={{display:'flex', gap:28, ...MOTION.enter(rt, 0.45 + i * 0.18)}}>
+            <div style={{width:3, background:acento, opacity:0.7, transformOrigin:'top', transform:`scaleY(${MOTION.draw(rt, 0.5 + i * 0.18, 0.6)})`}}/>
+            <div>
+              <div style={{fontSize:14, fontWeight:500, letterSpacing:'0.3em', color:acento, whiteSpace:'nowrap'}}>{e[0]}</div>
+              <div style={{fontSize:30, fontWeight:300, color:INK, marginTop:6, whiteSpace:'nowrap'}}>{e[1]}</div>
+              <div style={{fontSize:17, color:DIM, marginTop:4, whiteSpace:'nowrap'}}>{e[2]}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div style={{position:'absolute', right:140, top:150, bottom:150, width:480, ...MOTION.enter(rt, 0.4)}}>
+        <image-slot id="slot-experiencia" shape="rounded" radius="6" placeholder="foto de tu espacio de trabajo"></image-slot>
+      </div>
+    </RoomShell>
+  );
+}
+
+function RoomBlog({rt, rd, acento, live}){
+  const POSTS = [
+    ['AGO 2026', 'Título de la última nota del blog'],
+    ['JUL 2026', 'Otra nota placeholder sobre proceso'],
+    ['JUN 2026', 'Apuntes de un proyecto reciente'],
+  ];
+  return (
+    <RoomShell num="04" title="Blog" rt={rt} rd={rd} acento={acento} live={live}>
+      <div style={{position:'absolute', left:150, top:480, width:900, display:'flex', flexDirection:'column'}}>
+        {POSTS.map((p, i) => (
+          <div key={i} style={{padding:'26px 0', borderBottom:`1px solid ${FAINT}`, display:'flex', alignItems:'baseline', gap:40,
+            ...MOTION.enter(rt, 0.45 + i * 0.16)}}>
+            <span style={{fontSize:14, fontWeight:500, letterSpacing:'0.25em', color:acento, width:110}}>{p[0]}</span>
+            <span style={{fontSize:30, fontWeight:300, color:INK, whiteSpace:'nowrap'}}>{p[1]}</span>
+          </div>
+        ))}
+      </div>
+      <div style={{position:'absolute', right:140, top:460, width:440, height:300, ...MOTION.enter(rt, 0.4)}}>
+        <image-slot id="slot-blog" shape="rounded" radius="6" placeholder="imagen de la nota destacada"></image-slot>
+      </div>
+    </RoomShell>
+  );
+}
+
+function RoomContacto({rt, rd, acento, live}){
+  return (
+    <RoomShell num="05" title="Contacto" rt={rt} rd={rd} acento={acento} live={live}>
+      <div style={{position:'absolute', left:0, right:0, top:400, bottom:0, display:'flex', flexDirection:'column',
+        alignItems:'center', justifyContent:'center', gap:34}}>
+        <div style={{width:150, height:150, ...MOTION.enter(rt, 0.35)}}>
+          <image-slot id="slot-contacto" shape="circle" placeholder="tu avatar"></image-slot>
+        </div>
+        <div style={{fontSize:72, fontWeight:200, letterSpacing:'0.04em', ...MOTION.enter(rt, 0.5)}}>hola@danielsite.mx</div>
+        <div style={{display:'flex', gap:44, fontSize:16, letterSpacing:'0.3em', color:DIM, textTransform:'uppercase',
+          ...MOTION.enter(rt, 0.68)}}>
+          <span>GitHub</span><span style={{color:acento}}>·</span><span>LinkedIn</span><span style={{color:acento}}>·</span><span>Instagram</span>
+        </div>
+      </div>
     </RoomShell>
   );
 }
@@ -714,6 +584,8 @@ function Piece({acento, sonido}){
     <div data-screen-label={'t=' + Math.floor(time || 0) + 's'}
       style={{position:'absolute', inset:0, overflow:'hidden', fontFamily:FONT, color:INK, background:NAVY, cursor:'none'}}>
       <Corridor cam={cam} T={T} total={authoredTotal} acento={acento} active={cam.active}/>
+      <div style={{position:'absolute', left:0, top:0, bottom:0, width:940, zIndex:9, pointerEvents:'none', opacity:outO,
+        background:'linear-gradient(100deg, rgba(3,10,18,0.88) 0%, rgba(4,13,24,0.5) 54%, rgba(4,13,24,0) 100%)'}}/>
       <Brand T={T} CUES={CUES} outO={outO} acento={acento}/>
       <MenuUI T={T} sections={sections} cam={cam} acento={acento} outO={outO}/>
       {sections.map((s, i) => {
@@ -734,12 +606,6 @@ function Piece({acento, sonido}){
 
 function MenuPasillo(){
   const [tw, setTweak] = useTweaks(window.TWEAK_DEFAULTS || {motionEditor:true, sonido:false, acento:'#8fdcff'});
-  // La versión cinemática necesita el motor: sin él se dice, en vez de crashear.
-  if (!CompositionStage) return (
-    <div style={{padding:32, fontFamily:FONT, color:INK, background:NAVY, minHeight:'100vh'}}>
-      Falta <code>animations-v3.jsx</code>: esta página lo necesita para el modo cinemático.
-    </div>
-  );
   return (
     <div style={{width:'100%', height:'100vh', background:NAVY}}>
       <CompositionStage width={W} height={H} scenes={window.OM_SCENES} playback={window.OM_PLAYBACK} bg={NAVY}>
@@ -759,26 +625,19 @@ function MenuPasillo(){
 window.MenuPasillo = MenuPasillo;
 
 /* ================= MODO INTERACTIVO ================= */
-const WDUR = RITMO.caminar, EXDUR = RITMO.salir, ROOM_LAG = RITMO.retardoSalida;
+const WDUR = 2.2, EXDUR = 1.25, ROOM_LAG = 0.25;
 
-// `tapado` = hay una habitación encima cubriendo la pantalla. El pasillo seguía
-// animándose entero detrás de una capa opaca: se oculta y se pausa.
-const LiveCorridor = React.memo(function LiveCorridor({acento, glowIdx, glowOn, turned, tapado, rig}){
+const LiveCorridor = React.memo(function LiveCorridor({acento, glowIdx, glowOn, turned, rig, walkIdx}){
   return (
-    <div style={{position:'absolute', inset:0, overflow:'hidden', background:NAVY,
-      visibility:tapado ? 'hidden' : 'visible'}}>
-      <Escena perspectiva="680px" origen="50% 42%">
-        {/* solo el eje Z lleva will-change: es el único que anima en reposo.
-            bob y yaw se promueven solos durante la caminata. */}
-        <div ref={rig.bob} style={{position:'absolute', left:'50%', top:'50%', transformStyle:'preserve-3d'}}>
-          <div ref={rig.yaw} style={{position:'absolute', left:0, top:0, transformStyle:'preserve-3d'}}>
-            <div ref={rig.z} style={{position:'absolute', left:0, top:0, transformStyle:'preserve-3d', willChange:'transform',
-              animation:'om-idle-sway 36s ease-in-out infinite'}}>
-              <CorridorPlanes acento={acento} live glowIdx={glowIdx} glowVal={glowOn ? 1 : 0} pausado={tapado}/>
-            </div>
+    <div style={{position:'absolute', inset:0, overflow:'hidden', background:NAVY, perspective:'680px', perspectiveOrigin:'50% 42%'}}>
+      <div ref={rig.bob} style={{position:'absolute', left:'50%', top:'50%', transformStyle:'preserve-3d', willChange:'transform'}}>
+        <div ref={rig.yaw} style={{position:'absolute', left:0, top:0, transformStyle:'preserve-3d', willChange:'transform'}}>
+          <div ref={rig.z} style={{position:'absolute', left:0, top:0, transformStyle:'preserve-3d', willChange:'transform',
+            animation:'om-idle-sway 36s ease-in-out infinite'}}>
+            <CorridorPlanes acento={acento} live glowIdx={glowIdx} glowVal={glowOn ? 1 : 0} walkIdx={walkIdx}/>
           </div>
         </div>
-      </Escena>
+      </div>
       <div style={{position:'absolute', inset:0, pointerEvents:'none', opacity:turned ? 0.08 : 1, transition:'opacity 1.1s ease',
         background:'radial-gradient(circle 620px at 50% 46%, rgba(4,11,19,0.9) 0%, rgba(4,11,19,0.55) 34%, transparent 68%)'}}/>
       <div style={{position:'absolute', inset:0, background:'linear-gradient(to bottom, rgba(3,10,18,0.2), transparent 30%, rgba(3,10,18,0.3))'}}/>
@@ -786,50 +645,13 @@ const LiveCorridor = React.memo(function LiveCorridor({acento, glowIdx, glowOn, 
   );
 });
 
-// El pasillo y las habitaciones son 3D centrados, así que se ven bien a
-// cualquier tamaño: van a viewport completo. Solo la UI (marca, menú, textos)
-// está dibujada contra la retícula de 1920x1080, y esa sí se escala —
-// o se recompone en columna cuando la pantalla es angosta.
-function useStage(ref){
-  const [st, setSt] = React.useState({w:W, h:H, scale:1, escena:1, compact:false});
-  React.useEffect(() => {
-    const el = ref.current; if (!el) return;
-    const upd = () => {
-      const w = el.clientWidth, h = el.clientHeight;
-      if (!w || !h) return;
-      setSt({w, h, scale:Math.min(w / W, h / H), escena:cubrir(w, h), compact:w < 820 || h / w > 1.05});
-    };
-    upd();
-    const ro = new ResizeObserver(upd);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-  return st;
-}
-
-function useCoarsePointer(){
-  const [coarse, setCoarse] = React.useState(false);
-  React.useEffect(() => {
-    if (!window.matchMedia) return;
-    const mq = window.matchMedia('(pointer: coarse)');
-    const on = () => setCoarse(mq.matches);
-    on();
-    mq.addEventListener ? mq.addEventListener('change', on) : mq.addListener(on);
-    return () => { mq.removeEventListener ? mq.removeEventListener('change', on) : mq.removeListener(on); };
-  }, []);
-  return coarse;
-}
-
-const BTN_RESET = {appearance:'none', WebkitAppearance:'none', background:'none', border:0, margin:0,
-  font:'inherit', color:'inherit', textAlign:'left', display:'block'};
-
-function MenuInteractivo({height = '100vh'}){
+function MenuInteractivo(){
   const [tw, setTweak] = useTweaks(window.TWEAK_DEFAULTS || {sonido:true, acento:'#8fdcff'});
   const acento = tw.acento || '#8fdcff';
   const sonido = tw.sonido !== false;
   const [ph, setPh] = React.useState({mode:'idle', idx:-1});
   const [hov, setHov] = React.useState(-1);
-  const [rt, setRt] = React.useState(0);
+  const [scale, setScale] = React.useState(1);
   const rig = React.useRef({bob:React.createRef(), yaw:React.createRef(), z:React.createRef()}).current;
   const curRef = React.useRef(null);
   const wrapRef = React.useRef(null);
@@ -838,16 +660,14 @@ function MenuInteractivo({height = '100vh'}){
   const later = (fn, ms) => timers.current.push(setTimeout(fn, ms));
   React.useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
-  const {scale, escena, compact} = useStage(wrapRef);
-  const coarse = useCoarsePointer();
-
-  // El AudioContext nace suspendido hasta que hay un gesto del usuario; sin
-  // este resume los blips nunca suenan en el modo interactivo.
   React.useEffect(() => {
-    const f = () => { const c = AC.ensure(); if (c && c.resume) c.resume(); };
-    window.addEventListener('pointerdown', f);
-    window.addEventListener('keydown', f);
-    return () => { window.removeEventListener('pointerdown', f); window.removeEventListener('keydown', f); };
+    const fit = () => {
+      const el = wrapRef.current; if (!el) return;
+      setScale(Math.min(el.clientWidth / W, el.clientHeight / H));
+    };
+    fit();
+    window.addEventListener('resize', fit);
+    return () => window.removeEventListener('resize', fit);
   }, []);
 
   // camara por CSS: transiciones y keyframes, cero trabajo por frame
@@ -862,16 +682,15 @@ function MenuInteractivo({height = '100vh'}){
       void z.offsetWidth;
       z.style.transition = `transform ${WDUR}s cubic-bezier(0.37,0,0.63,1)`;
       z.style.transform = `translateZ(${door.z - 380}px)`;
-      yw.style.transition = `transform ${RITMO.girar}s cubic-bezier(0.45,0,0.55,1) ${WDUR - RITMO.girar}s`;
+      yw.style.transition = `transform 1.05s cubic-bezier(0.45,0,0.55,1) ${WDUR - 1.05}s`;
       yw.style.transform = `rotateY(${door.side * 58}deg)`;
-      // tres pasos que cubren exactamente la caminata, dure lo que dure
-      bb.style.animation = `om-walk-bob ${(WDUR / 3).toFixed(3)}s ease-in-out 3`;
+      bb.style.animation = 'om-walk-bob 0.74s ease-in-out 3';
     } else if (ph.mode === 'exit2' && door){
       z.style.transition = `transform ${EXDUR}s cubic-bezier(0.37,0,0.63,1)`;
       z.style.transform = 'translateZ(0px)';
-      yw.style.transition = `transform ${(EXDUR * 0.6).toFixed(3)}s cubic-bezier(0.33,1,0.68,1)`;
+      yw.style.transition = 'transform 0.6s cubic-bezier(0.33,1,0.68,1)';
       yw.style.transform = 'rotateY(0deg)';
-      bb.style.animation = `om-walk-bob ${(EXDUR / 2).toFixed(3)}s ease-in-out 2`;
+      bb.style.animation = 'om-walk-bob 0.64s ease-in-out 2';
     } else if (ph.mode === 'idle'){
       z.style.transition = 'none'; z.style.transform = 'translateZ(0px)';
       z.style.animation = 'om-idle-sway 36s ease-in-out infinite';
@@ -879,177 +698,136 @@ function MenuInteractivo({height = '100vh'}){
     }
   }, [ph.mode, ph.idx]);
 
-  // rt solo durante la entrada a la habitacion (3.6s), luego se congela
-  React.useEffect(() => {
-    if (ph.mode === 'idle'){ setRt(0); return; }
-    if (ph.mode === 'exit1'){ setRt(60); return; }
-    if (ph.mode !== 'room') return;
-    let raf; const t0 = performance.now();
-    // la coreografía está escrita sobre ROOM_T segundos; se reproduce en los
-    // que diga RITMO.entradaHabitacion
-    const vel = ROOM_T / RITMO.entradaHabitacion;
-    const loop = () => {
-      const t = (performance.now() - t0) / 1000 * vel;
-      setRt(Math.min(t, ROOM_T));
-      if (t < ROOM_T) raf = requestAnimationFrame(loop);
-    };
-    raf = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(raf);
-  }, [ph.mode]);
+  // el contenido de la habitacion se revela por CSS (sin reloj en React)
 
-  const go = React.useCallback((i) => {
+  const go = (i) => {
     if (phRef.current.mode !== 'idle') return;
     if (sonido) AC.blip(1200, 0.07, 0.05);
-    timers.current.forEach(clearTimeout); timers.current = [];
     setPh({mode:'walk', idx:i});
     later(() => { setPh({mode:'room', idx:i}); if (sonido) AC.blip(330, 0.5, 0.05); }, WDUR * 1000);
-  }, [sonido]);
-
-  const back = React.useCallback(() => {
+  };
+  const back = () => {
     if (phRef.current.mode !== 'room') return;
     const i = phRef.current.idx;
     if (sonido) AC.blip(240, 0.4, 0.04);
-    timers.current.forEach(clearTimeout); timers.current = [];
-    setHov(-1);
     setPh({mode:'exit1', idx:i});
     later(() => setPh({mode:'exit2', idx:i}), ROOM_LAG * 1000);
     later(() => setPh({mode:'idle', idx:-1}), (ROOM_LAG + EXDUR) * 1000);
-  }, [sonido]);
+  };
 
   React.useEffect(() => {
     const key = (e) => {
-      if (e.key === 'Escape'){ back(); return; }
-      if (e.altKey || e.ctrlKey || e.metaKey) return;
+      if (e.key === 'Escape') back();
       const n = parseInt(e.key, 10);
-      if (n >= 1 && n <= MENUS.length){ e.preventDefault(); go(n - 1); }
+      if (n >= 1 && n <= 5) go(n - 1);
     };
     window.addEventListener('keydown', key);
     return () => window.removeEventListener('keydown', key);
-  }, [go, back]);
+  }, [sonido]);
 
+  const sel = ph.idx >= 0 && ph.mode !== 'idle' ? ph.idx : (hov >= 0 && hov < 5 ? hov : -1);
   const inRoom = ph.mode === 'room' || ph.mode === 'exit1';
   const Room = ph.idx >= 0 ? ROOMS[ph.idx] : null;
   const menuOn = ph.mode === 'idle';
   const fkey = ph.mode === 'walk' || ph.mode === 'room' ? 'in' + ph.idx : (ph.mode === 'exit1' || ph.mode === 'exit2' ? 'out' + ph.idx : '');
 
-  const marca = (
-    <div style={{transform:'skewX(-6deg)', pointerEvents:'none'}}>
-      <div style={{fontSize:compact ? 40 : 84, fontWeight:200, letterSpacing:compact ? '0.1em' : '0.16em', whiteSpace:'nowrap'}}>
-        {CONTENT.nombre} <span style={{fontWeight:500, color:acento}}>{CONTENT.apellido}</span>
-      </div>
-      <div style={{fontSize:compact ? 11 : 15, letterSpacing:compact ? '0.28em' : '0.45em', color:DIM,
-        marginTop:compact ? 10 : 14, textTransform:'uppercase'}}>{CONTENT.tagline}</div>
-    </div>
-  );
-
-  const itemBtn = (m, i) => {
-    const hl = ph.idx === i && ph.mode !== 'idle' ? 1 : (hov === i ? 1 : 0);
-    const on = hl > 0.5;
-    return (
-      <button key={m.id} type="button" disabled={!menuOn}
-        aria-label={`${m.label} — opción ${i + 1} de ${MENUS.length}`}
-        onPointerEnter={() => { if (coarse) return; setHov(i); if (sonido && phRef.current.mode === 'idle') AC.blip(880, 0.04, 0.025); }}
-        onPointerLeave={() => { if (!coarse) setHov(-1); }}
-        onPointerDown={() => { if (coarse) setHov(i); }}
-        onFocus={() => setHov(i)} onBlur={() => setHov(-1)}
-        onClick={() => go(i)}
-        style={{...BTN_RESET, position:compact ? 'relative' : 'absolute',
-          left:compact ? undefined : ITEM_X, top:compact ? undefined : ITEM_Y0 + i * STEP,
-          width:compact ? '100%' : undefined, padding:compact ? '10px 10px 10px 0' : '4px 10px 4px 0',
-          cursor:coarse ? 'pointer' : 'none', outline:'none',
-          transform:`translateX(${hl * (compact ? 12 : 22)}px) skewX(-10deg)`,
-          transition:'transform 0.25s cubic-bezier(0.22,1,0.36,1)'}}>
-        <span style={{position:'absolute', left:compact ? -14 : -26, right:compact ? -10 : -34, top:-4, bottom:-4, opacity:hl,
-          background:'linear-gradient(90deg, #2f86e2, #1c5fb4)', boxShadow:`0 0 38px rgba(70,150,235,${0.55 * hl})`,
-          transition:'opacity 0.2s'}}/>
-        <span style={{position:'relative', display:'flex', alignItems:'baseline', gap:compact ? 12 : 16}}>
-          <span style={{fontSize:compact ? 11 : 13, fontWeight:600, letterSpacing:'0.2em',
-            color:on ? 'rgba(230,245,255,0.9)' : FAINT, width:compact ? 24 : 30}}>{m.num}</span>
-          <span style={{fontSize:compact ? 26 : 32, fontWeight:on ? 600 : 400, letterSpacing:'0.1em', textTransform:'uppercase',
-            color:on ? '#ffffff' : INK, whiteSpace:'nowrap'}}>{m.label}</span>
-        </span>
-      </button>
-    );
-  };
-
-  const pista = coarse ? 'Toca una opción' : 'Clic o teclas 1–5';
-  const rotulo = (
-    <div style={{display:'flex', alignItems:'center', gap:12}}>
-      <div style={{width:8, height:8, background:acento, transform:'rotate(45deg)'}}/>
-      <span style={{fontSize:12, fontWeight:500, letterSpacing:'0.6em', color:DIM}}>MENÚ</span>
-    </div>
-  );
-
-  const uiDesktop = (
-    <div style={{position:'absolute', left:'50%', top:'50%', width:W, height:H, marginLeft:-W / 2, marginTop:-H / 2,
-      transform:`scale(${scale})`, zIndex:10, pointerEvents:'none'}}>
-      <div style={{position:'absolute', left:150, top:240, transform:'skewX(0deg)', opacity:menuOn ? 1 : 0,
-        transition:`opacity ${RITMO.fundidoMenu}s ease`}}>{marca}</div>
-      <nav aria-label="Menú principal" aria-hidden={!menuOn}
-        style={{position:'absolute', inset:0, opacity:menuOn ? 1 : 0, transition:`opacity ${RITMO.fundidoMenu}s ease`,
-          pointerEvents:menuOn ? 'auto' : 'none'}}>
-        <div style={{position:'absolute', left:ITEM_X, top:ITEM_Y0 - 58}}>{rotulo}</div>
-        {MENUS.map(itemBtn)}
-        <div style={{position:'absolute', left:ITEM_X, top:ITEM_Y0 + MENUS.length * STEP + 46, fontSize:13,
-          letterSpacing:'0.3em', color:FAINT, textTransform:'uppercase'}}>{pista}</div>
-      </nav>
-    </div>
-  );
-
-  const uiCompact = (
-    <div style={{position:'absolute', inset:0, zIndex:10, display:'flex', flexDirection:'column',
-      justifyContent:'space-between', padding:'calc(6vh + env(safe-area-inset-top)) 22px calc(28px + env(safe-area-inset-bottom))',
-      opacity:menuOn ? 1 : 0, transition:`opacity ${RITMO.fundidoMenu}s ease`, pointerEvents:menuOn ? 'auto' : 'none'}}>
-      {marca}
-      <nav aria-label="Menú principal" aria-hidden={!menuOn} style={{display:'flex', flexDirection:'column', gap:2}}>
-        <div style={{marginBottom:18}}>{rotulo}</div>
-        {MENUS.map(itemBtn)}
-        <div style={{marginTop:22, fontSize:11, letterSpacing:'0.3em', color:FAINT, textTransform:'uppercase'}}>{pista}</div>
-      </nav>
-    </div>
-  );
-
-  const volver = (
-    <button type="button" onClick={back} aria-label="Volver al pasillo"
-      onPointerEnter={() => { if (!coarse) setHov(9); }} onPointerLeave={() => { if (!coarse) setHov(-1); }}
-      onFocus={() => setHov(9)} onBlur={() => setHov(-1)}
-      style={{...BTN_RESET, position:'absolute', zIndex:30, display:'flex', alignItems:'center', gap:14,
-        right:compact ? 'calc(16px + env(safe-area-inset-right))' : 150 * scale,
-        top:compact ? 'calc(16px + env(safe-area-inset-top))' : 140 * scale,
-        padding:compact ? '12px 16px' : '12px 22px', transform:'skewX(-10deg)',
-        cursor:coarse ? 'pointer' : 'none', opacity:MOTION.enter(rt, 0.6).opacity,
-        background:hov === 9 ? 'linear-gradient(90deg, #2f86e2, #1c5fb4)' : 'rgba(6,19,33,0.7)',
-        border:'1px solid rgba(140,200,255,0.3)', boxShadow:hov === 9 ? '0 0 38px rgba(70,150,235,0.5)' : 'none',
-        transition:'background 0.2s'}}>
-      <span style={{fontSize:18, color:INK}}>←</span>
-      <span style={{fontSize:compact ? 13 : 15, fontWeight:500, letterSpacing:'0.3em', color:INK}}>VOLVER</span>
-      {!coarse && <span style={{fontSize:11, letterSpacing:'0.2em', color:DIM, marginLeft:6}}>ESC</span>}
-    </button>
-  );
-
   return (
-    <EscalaEscena.Provider value={escena}>
-    <div ref={wrapRef} style={{position:'relative', width:'100%', height, background:NAVY, overflow:'hidden',
-      fontFamily:FONT, color:INK, cursor:coarse ? 'auto' : 'none'}}>
-      <LiveCorridor acento={acento} glowIdx={ph.idx} glowOn={ph.mode !== 'idle' && ph.mode !== 'exit2'}
-        turned={inRoom} tapado={inRoom} rig={rig}/>
-      {compact ? uiCompact : uiDesktop}
-      {inRoom && Room && <>
-        <Room rt={rt} rd={ph.mode === 'exit1' ? 0.5 : undefined} acento={acento} live compact={compact}/>
-        {volver}
-      </>}
-      {!coarse && (
-        <div ref={curRef} aria-hidden="true" style={{position:'absolute', left:0, top:0, zIndex:40, pointerEvents:'none',
+    <div ref={wrapRef} style={{width:'100%', height:'100vh', background:NAVY, display:'flex', alignItems:'center',
+      justifyContent:'center', overflow:'hidden'}}>
+      <div onMouseMove={(e) => {
+          const el = curRef.current; if (!el) return;
+          const r = e.currentTarget.getBoundingClientRect();
+          el.style.transform = `translate(${(e.clientX - r.left) / scale}px, ${(e.clientY - r.top) / scale}px)`;
+        }}
+        style={{width:W, height:H, position:'relative', overflow:'hidden', flex:'none', transform:`scale(${scale})`,
+        fontFamily:FONT, color:INK, background:NAVY, cursor:'none'}}>
+        <LiveCorridor acento={acento} glowIdx={ph.idx} glowOn={ph.mode !== 'idle' && ph.mode !== 'exit2'} turned={inRoom} rig={rig}
+          walkIdx={ph.mode === 'idle' || ph.mode === 'exit2' ? -1 : ph.idx}/>
+        {/* velo de legibilidad */}
+        <div style={{position:'absolute', left:0, top:0, bottom:0, width:940, zIndex:9, pointerEvents:'none',
+          opacity:menuOn ? 1 : 0, transition:'opacity 1.4s ease',
+          background:'linear-gradient(100deg, rgba(3,10,18,0.88) 0%, rgba(4,13,24,0.5) 54%, rgba(4,13,24,0) 100%)'}}/>
+        {/* marca */}
+        <div style={{position:'absolute', left:150, top:236, zIndex:10, transform:'skewX(-6deg)', pointerEvents:'none',
+          opacity:menuOn ? 1 : 0, transition:'opacity 1.4s ease'}}>
+          <div style={{fontSize:84, fontWeight:200, letterSpacing:'0.16em', whiteSpace:'nowrap', color:'#f4fcff'}}>
+            DANIEL <span style={{fontWeight:500, color:acento, textShadow:`0 0 38px ${acento}55`}}>SITE</span>
+          </div>
+          <div style={{fontSize:15, letterSpacing:'0.45em', color:'rgba(206,232,252,0.58)', marginTop:14, textTransform:'uppercase'}}>Portafolio personal — MMXXVI</div>
+        </div>
+        {/* menu clicable */}
+        <div style={{position:'absolute', inset:0, zIndex:10, opacity:menuOn ? 1 : 0, transition:'opacity 1.4s ease',
+          pointerEvents:menuOn ? 'auto' : 'none'}}>
+          <div style={{position:'absolute', left:ITEM_X, top:ITEM_Y0 - 66, display:'flex', alignItems:'center', gap:14, width:540}}>
+            <div style={{width:7, height:7, background:acento, transform:'rotate(45deg)', boxShadow:`0 0 16px ${acento}`}}/>
+            <span style={{fontSize:12, fontWeight:500, letterSpacing:'0.62em', color:'rgba(206,232,252,0.72)'}}>MENÚ</span>
+            <div style={{flex:1, height:1, background:'linear-gradient(90deg, rgba(143,220,255,0.34), rgba(143,220,255,0))'}}/>
+          </div>
+          <div style={{position:'absolute', left:ITEM_X - 32, top:ITEM_Y0 + 4, width:1, height:4 * STEP + 44,
+            background:'linear-gradient(180deg, rgba(143,220,255,0.04), rgba(143,220,255,0.2) 18%, rgba(143,220,255,0.2) 82%, rgba(143,220,255,0.04))'}}/>
+          <div style={{position:'absolute', left:ITEM_X - 35, top:ITEM_Y0 + (sel < 0 ? 0 : sel) * STEP + 20, width:7, height:7,
+            background:acento, transform:'rotate(45deg)', boxShadow:`0 0 18px ${acento}`,
+            opacity:sel < 0 ? 0 : 1, transition:'top 0.34s cubic-bezier(0.22,1,0.36,1), opacity 0.24s ease'}}/>
+          {MENUS.map((m, i) => {
+            const on = (ph.idx === i && ph.mode !== 'idle') || hov === i;
+            return (
+              <div key={m.id} onMouseEnter={() => { setHov(i); if (sonido && phRef.current.mode === 'idle') AC.blip(880, 0.04, 0.025); }}
+                onMouseLeave={() => setHov(-1)} onClick={() => go(i)}
+                style={{position:'absolute', left:ITEM_X, top:ITEM_Y0 + i * STEP, height:52, display:'flex', alignItems:'center',
+                  paddingRight:16, transform:`translateX(${on ? 26 : 0}px) skewX(-10deg)`,
+                  transition:'transform 0.32s cubic-bezier(0.22,1,0.36,1)'}}>
+                <div style={{position:'absolute', left:-30, right:-56, top:0, bottom:0, opacity:on ? 1 : 0,
+                  background:'linear-gradient(96deg, #1c8fd6 0%, #1758b4 46%, rgba(12,42,88,0) 100%)',
+                  boxShadow:'0 0 46px rgba(45,140,225,0.4)', transition:'opacity 0.24s ease'}}/>
+                <div style={{position:'absolute', left:-30, top:0, bottom:0, width:4, opacity:on ? 1 : 0,
+                  background:'#e6f8ff', boxShadow:'0 0 22px rgba(210,244,255,0.85)', transition:'opacity 0.24s ease'}}/>
+                <div style={{position:'relative', display:'flex', alignItems:'baseline', gap:18}}>
+                  <span style={{fontSize:13, fontWeight:600, letterSpacing:'0.22em', width:28,
+                    color:on ? 'rgba(242,252,255,0.95)' : 'rgba(143,220,255,0.42)', transition:'color 0.24s ease'}}>{m.num}</span>
+                  <span style={{fontSize:34, fontWeight:on ? 500 : 300, letterSpacing:on ? '0.13em' : '0.1em', textTransform:'uppercase',
+                    color:on ? '#ffffff' : '#cbe4f6', whiteSpace:'nowrap',
+                    transition:'color 0.24s ease, letter-spacing 0.32s cubic-bezier(0.22,1,0.36,1)'}}>{m.label}</span>
+                </div>
+              </div>
+            );
+          })}
+          <div style={{position:'absolute', left:ITEM_X, top:ITEM_Y0 + 4 * STEP + 92, display:'flex', alignItems:'center', gap:10}}>
+            {['1', '2', '3', '4', '5'].map(k => (
+              <span key={k} style={{width:28, height:28, display:'flex', alignItems:'center', justifyContent:'center',
+                fontSize:12, fontWeight:500, color:'rgba(206,232,252,0.6)', transform:'skewX(-10deg)',
+                border:'1px solid rgba(143,220,255,0.22)', background:'rgba(10,28,48,0.5)'}}>{k}</span>
+            ))}
+            <span style={{fontSize:12, letterSpacing:'0.3em', color:FAINT, textTransform:'uppercase', marginLeft:8}}>o clic para entrar</span>
+          </div>
+        </div>
+        {/* habitacion */}
+        {inRoom && Room && (
+          <>
+            <Room rt={999} rd={ph.mode === 'exit1' ? 0.5 : undefined} acento={acento} live/>
+            <div onClick={back} onMouseEnter={() => setHov(9)} onMouseLeave={() => setHov(-1)}
+              style={{position:'absolute', right:150, top:140, zIndex:30, display:'flex', alignItems:'center', gap:14,
+                padding:'12px 22px', transform:'skewX(-10deg)', cursor:'none',
+                animation:'om-ui-in 0.6s ease 0.45s both',
+                background:hov === 9 ? 'linear-gradient(90deg, #2f86e2, #1c5fb4)' : 'rgba(6,19,33,0.7)',
+                border:'1px solid rgba(140,200,255,0.3)', boxShadow:hov === 9 ? '0 0 38px rgba(70,150,235,0.5)' : 'none',
+                transition:'background 0.2s'}}>
+              <span style={{fontSize:18, color:INK}}>←</span>
+              <span style={{fontSize:15, fontWeight:500, letterSpacing:'0.3em', color:INK}}>VOLVER</span>
+              <span style={{fontSize:11, letterSpacing:'0.2em', color:DIM, marginLeft:6}}>ESC</span>
+            </div>
+          </>
+        )}
+        {/* cursor personalizado (imperativo, sin re-render) */}
+        <div ref={curRef} style={{position:'absolute', left:0, top:0, zIndex:40, pointerEvents:'none',
           transform:'translate(-100px, -100px)'}}>
           <div style={{width:14, height:14, border:`2px solid ${acento}`, transform:`rotate(45deg) scale(${hov >= 0 ? 1.3 : 1})`,
             boxShadow:`0 0 16px ${acento}66`, transition:'transform 0.15s'}}/>
         </div>
-      )}
-      <div style={{position:'absolute', inset:0, zIndex:50, pointerEvents:'none',
-        background:'radial-gradient(ellipse at 50% 45%, transparent 55%, rgba(2,8,14,0.42))'}}/>
-      {fkey !== '' && <div key={fkey} style={{position:'absolute', inset:0, zIndex:60, pointerEvents:'none', background:'#e8f6ff',
-        opacity:0, animation:fkey[0] === 'i' ? `om-flash-in ${(WDUR / 0.8).toFixed(3)}s linear` : 'om-flash-out 0.75s linear'}}/>}
-      {!coarse && <PointerTracker target={wrapRef} cursor={curRef}/>}
+        <div style={{position:'absolute', inset:0, zIndex:50, pointerEvents:'none',
+          background:'radial-gradient(ellipse at 50% 45%, transparent 55%, rgba(2,8,14,0.42))'}}/>
+        {fkey !== '' && <div key={fkey} style={{position:'absolute', inset:0, zIndex:60, pointerEvents:'none', background:'#e8f6ff',
+          opacity:0, animation:fkey[0] === 'i' ? `om-flash-in ${WDUR + 0.55}s linear` : 'om-flash-out 0.75s linear'}}/>}
+      </div>
       <TweaksPanel>
         <TweakSection label="Interacción"/>
         <TweakToggle label="Sonido (SFX)" value={sonido} onChange={v => setTweak('sonido', v)}/>
@@ -1058,24 +836,6 @@ function MenuInteractivo({height = '100vh'}){
           onChange={v => setTweak('acento', v)}/>
       </TweaksPanel>
     </div>
-    </EscalaEscena.Provider>
   );
 }
-
-// El cursor se mueve escribiendo el transform directo: mover el puntero no
-// dispara un render de React.
-function PointerTracker({target, cursor}){
-  React.useEffect(() => {
-    const host = target.current, el = cursor.current;
-    if (!host || !el) return;
-    const move = (e) => {
-      const r = host.getBoundingClientRect();
-      el.style.transform = `translate(${e.clientX - r.left}px, ${e.clientY - r.top}px)`;
-    };
-    host.addEventListener('pointermove', move);
-    return () => host.removeEventListener('pointermove', move);
-  }, [target.current, cursor.current]);
-  return null;
-}
-
 window.MenuInteractivo = MenuInteractivo;

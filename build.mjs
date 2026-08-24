@@ -1,9 +1,10 @@
 /* Compila menu-pasillo.jsx a una página autocontenida.
    Salidas:
      dist/index.html    documento completo — para servir en cualquier host
+     index.html         copia de dist/index.html — lo que publica GitHub Pages
      dist/artifact.html mismo contenido sin <html>/<head>/<body> — para Artifacts
    Uso: npm install && npm run build                                        */
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, copyFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -72,6 +73,27 @@ const FUENTE = '<link rel="preconnect" href="https://fonts.googleapis.com">\n'
   + '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">\n'
   + '<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600&display=swap" rel="stylesheet">';
 
+// En Claude Design, tweaks-panel.jsx expone useTweaks y los controles del panel
+// de edición. La página publicada no lo lleva — el panel es andamiaje de autor —,
+// así que aquí va lo mínimo para que el componente monte: los tweaks quedan en sus
+// valores por defecto y los controles no dibujan nada. Sin esto el destructuring de
+// menu-pasillo.jsx deja useTweaks en undefined y la página sale en blanco.
+const TWEAKS = `
+window.useTweaks = function (defaults) {
+  var par = React.useState(defaults || {});
+  return [par[0], function (clave, valor) {
+    par[1](function (previo) {
+      var siguiente = Object.assign({}, previo);
+      siguiente[clave] = valor;
+      return siguiente;
+    });
+  }];
+};
+window.TweaksPanel = window.TweakSection = window.TweakRow = window.TweakSlider =
+window.TweakToggle = window.TweakRadio = window.TweakSelect = window.TweakText =
+window.TweakNumber = window.TweakColor = window.TweakButton = function () { return null; };
+`;
+
 const build = async () => {
   console.log('construyendo…');
   const fuente = await readFile(p('menu-pasillo.jsx'), 'utf8');
@@ -93,6 +115,7 @@ const build = async () => {
   const cuerpo = [
     '<div id="om-root"></div>',
     `<script>${react}</script>`,
+    `<script>${TWEAKS}</script>`,
     `<script>${code}</script>`,
     `<script>${BOOT}</script>`,
   ].join('\n');
@@ -105,11 +128,16 @@ const build = async () => {
     '<!DOCTYPE html>\n<html lang="es">\n<head>\n<meta charset="utf-8">\n'
     + '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n'
     + cabeza + '\n</head>\n<body>\n' + cuerpo + '\n</body>\n</html>\n');
+  // GitHub Pages sirve la raíz de la rama y dist/ está en .gitignore, así que la
+  // misma salida se copia a la raíz en cada build. Regenerarla aquí — en vez de
+  // copiarla a mano — evita que lo publicado se quede atrás del código.
+  await copyFile(p('dist', 'index.html'), p('index.html'));
 
   const kb = (s) => (Buffer.byteLength(s) / 1024).toFixed(0) + ' kB';
   console.log(`  menu-pasillo.jsx -> ${kb(code)} de JS`);
   console.log(`  dist/index.html    (documento completo)`);
   console.log(`  dist/artifact.html (fragmento para Artifacts)`);
+  console.log(`  index.html         (raíz — lo que publica GitHub Pages)`);
 };
 
 build().catch((e) => { console.error(e); process.exit(1); });

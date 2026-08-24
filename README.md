@@ -45,6 +45,10 @@ Las imágenes tienen dos caminos:
 | `Menu Interactivo.dc.html` | Página de Claude Design — modo interactivo |
 | `Menu Pasillo.dc.html` | Página de Claude Design — modo cinemático (loop de 40 s) |
 | `animations-v3.jsx`, `tweaks-panel.jsx`, `image-slot.js`, `support.js` | Andamiaje de Claude Design — no editar |
+
+`tweaks-panel.jsx` sólo existe dentro de Claude Design, así que el build inyecta
+un `useTweaks` mínimo y deja los controles del panel en nada. Sin ese shim el
+componente truena al montar y la página publicada sale en blanco.
 | `uploads/` | Capturas de referencia (Persona 3 Reload) y el pasillo original |
 
 El archivo exporta dos componentes que comparten escenario y habitaciones:
@@ -56,11 +60,18 @@ El archivo exporta dos componentes que comparten escenario y habitaciones:
 
 ## Publicar
 
-`dist/` trae dos salidas del mismo build:
+En vivo: **https://danielzam0407.github.io/menu-pasillo/**
 
-- `index.html` — documento completo, se sube a cualquier host estático.
-- `artifact.html` — el mismo contenido sin `<html>/<head>/<body>`, para
+Cada build escribe tres salidas:
+
+- `index.html` en la raíz — lo que sirve GitHub Pages. Es copia de
+  `dist/index.html`, regenerada en cada build para que lo publicado no se
+  quede atrás del código. Es la única salida que va en git.
+- `dist/index.html` — el mismo documento completo, para cualquier host estático.
+- `dist/artifact.html` — el mismo contenido sin `<html>/<head>/<body>`, para
   publicarlo como Artifact de Claude.
+
+Para actualizar el sitio: `npm run build`, luego commit y push de `index.html`.
 
 Ambos son autocontenidos: React va incrustado y lo único externo es la fuente
 Outfit de Google Fonts. `vendor/` cachea React para que el build corra sin red.
