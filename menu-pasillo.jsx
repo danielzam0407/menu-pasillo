@@ -539,7 +539,7 @@ function RoomContacto({rt, rd, acento, live}){
         <div style={{width:150, height:150, ...MOTION.enter(rt, 0.35)}}>
           <image-slot id="slot-contacto" shape="circle" placeholder="tu avatar"></image-slot>
         </div>
-        <div style={{fontSize:72, fontWeight:200, letterSpacing:'0.04em', ...MOTION.enter(rt, 0.5)}}>hola@danielsite.mx</div>
+        <div style={{fontSize:72, fontWeight:200, letterSpacing:'0.04em', ...MOTION.enter(rt, 0.5)}}>dani@nervcenter.online</div>
         <div style={{display:'flex', gap:44, fontSize:16, letterSpacing:'0.3em', color:DIM, textTransform:'uppercase',
           ...MOTION.enter(rt, 0.68)}}>
           <span>GitHub</span><span style={{color:acento}}>·</span><span>LinkedIn</span><span style={{color:acento}}>·</span><span>Instagram</span>
