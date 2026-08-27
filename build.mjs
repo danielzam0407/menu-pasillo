@@ -107,8 +107,8 @@ const build = async () => {
   const react = await vendor();
 
   const cabeza = [
-    '<title>Menú Pasillo</title>',
-    '<meta name="description" content="Portafolio personal que se navega como un menú de videojuego: un pasillo 3D con una habitación detrás de cada opción.">',
+    '<title>Menú Pasillo — demo</title>',
+    '<meta name="description" content="Demo de un portafolio que se navega como un menú de videojuego: un pasillo 3D con una habitación detrás de cada opción. El contenido —Nimbra Estudio, sus proyectos y su experiencia— es de un estudio ficticio, puesto para enseñar la pieza llena.">',
     FUENTE,
     `<style>${CSS}</style>`,
   ].join('\n');

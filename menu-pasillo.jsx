@@ -228,10 +228,10 @@ function Brand({T, CUES, outO, acento}){
   return (
     <div style={{position:'absolute', left:150, top:236 - 148 * p, opacity:a * outO, zIndex:10, transform:'skewX(-6deg)'}}>
       <div style={{fontSize:84 - 64 * p, fontWeight:200, letterSpacing:(0.16 + 0.14 * p) + 'em', whiteSpace:'nowrap', color:'#f4fcff'}}>
-        DANIEL <span style={{fontWeight:500, color:acento, textShadow:`0 0 38px ${acento}55`}}>SITE</span>
+        NIMBRA <span style={{fontWeight:500, color:acento, textShadow:`0 0 38px ${acento}55`}}>ESTUDIO</span>
       </div>
       <div style={{fontSize:15, letterSpacing:'0.45em', color:'rgba(206,232,252,0.58)', marginTop:14, textTransform:'uppercase',
-        opacity:clamp(1 - p * 1.6, 0, 1)}}>Portafolio personal — MMXXVI</div>
+        opacity:clamp(1 - p * 1.6, 0, 1)}}>Estudio de diseño — MMXXVI</div>
     </div>
   );
 }
@@ -444,12 +444,13 @@ function RoomSobre({rt, rd, acento, live}){
     <RoomShell num="01" title="Sobre mí" rt={rt} rd={rd} acento={acento} live={live}>
       <div style={{position:'absolute', left:150, top:490, width:600, ...MOTION.enter(rt, 0.5)}}>
         <p style={{margin:0, fontSize:24, fontWeight:300, lineHeight:1.7, color:DIM, textWrap:'pretty'}}>
-          Texto placeholder: quién eres, qué haces y qué te mueve. Dos o tres líneas bastan en esta pantalla.
+          Diseño interfaces que se recorren en vez de leerse: menús, catálogos y kioscos
+          donde moverse es parte de entender. Trabajo desde Guadalajara con un equipo de tres.
         </p>
         <div style={{display:'flex', gap:64, marginTop:52}}>
-          <Stat v="+6" l="años creando" acento={acento}/>
-          <Stat v="24" l="proyectos" acento={acento}/>
-          <Stat v="MX" l="base" acento={acento}/>
+          <Stat v="+8" l="años creando" acento={acento}/>
+          <Stat v="31" l="proyectos" acento={acento}/>
+          <Stat v="GDL" l="base" acento={acento}/>
         </div>
       </div>
       <div style={{position:'absolute', right:140, top:140, bottom:140, width:620, ...MOTION.enter(rt, 0.35)}}>
@@ -460,19 +461,24 @@ function RoomSobre({rt, rd, acento, live}){
 }
 
 function RoomPortafolio({rt, rd, acento, live}){
+  const PROY = [
+    ['Vestíbulo Norte', 'Kiosco interactivo · 2026'],
+    ['Cauce', 'Identidad y web · 2025'],
+    ['Feria Lumbre', 'Dirección de arte · 2024'],
+  ];
   return (
     <RoomShell num="02" title="Portafolio" rt={rt} rd={rd} acento={acento} live={live}>
       <div style={{position:'absolute', left:150, right:150, top:480, display:'flex', gap:36}}>
-        {[0,1,2].map(i => (
+        {PROY.map((pr, i) => (
           <div key={i} style={{flex:1, ...MOTION.enter(rt, 0.4 + i * 0.16)}}>
             <div style={{height:300}}>
               <image-slot id={'slot-proyecto-' + (i + 1)} shape="rounded" radius="6" placeholder={'proyecto 0' + (i + 1)}></image-slot>
             </div>
             <div style={{display:'flex', alignItems:'baseline', gap:14, marginTop:20}}>
               <span style={{fontSize:13, fontWeight:500, letterSpacing:'0.2em', color:acento}}>{'0' + (i + 1)}</span>
-              <span style={{fontSize:22, fontWeight:300, color:INK, whiteSpace:'nowrap'}}>Nombre del proyecto</span>
+              <span style={{fontSize:22, fontWeight:300, color:INK, whiteSpace:'nowrap'}}>{pr[0]}</span>
             </div>
-            <div style={{fontSize:15, color:DIM, marginTop:6, whiteSpace:'nowrap'}}>Disciplina · Año</div>
+            <div style={{fontSize:15, color:DIM, marginTop:6, whiteSpace:'nowrap'}}>{pr[1]}</div>
           </div>
         ))}
       </div>
@@ -482,9 +488,9 @@ function RoomPortafolio({rt, rd, acento, live}){
 
 function RoomExperiencia({rt, rd, acento, live}){
   const XP = [
-    ['2024 — HOY', 'Rol placeholder', 'Empresa · Ciudad'],
-    ['2021 — 2024', 'Rol anterior', 'Empresa · Ciudad'],
-    ['2019 — 2021', 'Primer rol', 'Empresa · Ciudad'],
+    ['2021 — HOY', 'Dirección de diseño', 'Nimbra Estudio · Guadalajara'],
+    ['2019 — 2021', 'Diseño de producto', 'Cardumen Digital · Ciudad de México'],
+    ['2018 — 2019', 'Diseño junior', 'Taller Ocre · Guadalajara'],
   ];
   return (
     <RoomShell num="03" title="Experiencia" rt={rt} rd={rd} acento={acento} live={live}>
@@ -509,9 +515,9 @@ function RoomExperiencia({rt, rd, acento, live}){
 
 function RoomBlog({rt, rd, acento, live}){
   const POSTS = [
-    ['AGO 2026', 'Título de la última nota del blog'],
-    ['JUL 2026', 'Otra nota placeholder sobre proceso'],
-    ['JUN 2026', 'Apuntes de un proyecto reciente'],
+    ['AGO 2026', 'Un menú no es una lista, es un lugar'],
+    ['JUL 2026', 'Medir el ritmo de una transición'],
+    ['JUN 2026', 'Tres semanas dibujando una sola puerta'],
   ];
   return (
     <RoomShell num="04" title="Blog" rt={rt} rd={rd} acento={acento} live={live}>
@@ -539,7 +545,9 @@ function RoomContacto({rt, rd, acento, live}){
         <div style={{width:150, height:150, ...MOTION.enter(rt, 0.35)}}>
           <image-slot id="slot-contacto" shape="circle" placeholder="tu avatar"></image-slot>
         </div>
-        <div style={{fontSize:72, fontWeight:200, letterSpacing:'0.04em', ...MOTION.enter(rt, 0.5)}}>dani@nervcenter.online</div>
+        {/* Dominio `.example`, reservado por la RFC 2606 para muestras: nadie puede
+            registrarlo, así que este correo no le cae a una persona de verdad. */}
+        <div style={{fontSize:72, fontWeight:200, letterSpacing:'0.04em', ...MOTION.enter(rt, 0.5)}}>hola@nimbra.example</div>
         <div style={{display:'flex', gap:44, fontSize:16, letterSpacing:'0.3em', color:DIM, textTransform:'uppercase',
           ...MOTION.enter(rt, 0.68)}}>
           <span>GitHub</span><span style={{color:acento}}>·</span><span>LinkedIn</span><span style={{color:acento}}>·</span><span>Instagram</span>
@@ -751,9 +759,9 @@ function MenuInteractivo(){
         <div style={{position:'absolute', left:150, top:236, zIndex:10, transform:'skewX(-6deg)', pointerEvents:'none',
           opacity:menuOn ? 1 : 0, transition:'opacity 1.4s ease'}}>
           <div style={{fontSize:84, fontWeight:200, letterSpacing:'0.16em', whiteSpace:'nowrap', color:'#f4fcff'}}>
-            DANIEL <span style={{fontWeight:500, color:acento, textShadow:`0 0 38px ${acento}55`}}>SITE</span>
+            NIMBRA <span style={{fontWeight:500, color:acento, textShadow:`0 0 38px ${acento}55`}}>ESTUDIO</span>
           </div>
-          <div style={{fontSize:15, letterSpacing:'0.45em', color:'rgba(206,232,252,0.58)', marginTop:14, textTransform:'uppercase'}}>Portafolio personal — MMXXVI</div>
+          <div style={{fontSize:15, letterSpacing:'0.45em', color:'rgba(206,232,252,0.58)', marginTop:14, textTransform:'uppercase'}}>Estudio de diseño — MMXXVI</div>
         </div>
         {/* menu clicable */}
         <div style={{position:'absolute', inset:0, zIndex:10, opacity:menuOn ? 1 : 0, transition:'opacity 1.4s ease',
