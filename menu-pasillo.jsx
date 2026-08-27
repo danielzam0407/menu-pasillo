@@ -199,9 +199,27 @@ function CorridorPlanes({acento, T, total, live, glowIdx, glowVal, camZ, walkIdx
             return <Door key={d.id} d={d} x={depth - d.z - 170} glow={glowFor(i)} acento={acento} soft={live} vis={visFor(d, i)}/>;
           })}
         </Plane>
-        {/* fondo */}
-        <Plane w={w} h={h} t={`translate3d(${-wallX}px, ${-floorY}px, ${-depth + 40}px)`} style={{...darkChk, filter:'brightness(0.4)'}}>
-          <div style={{position:'absolute', inset:0, background:'rgba(3,9,16,0.88)'}}/>
+        {/* Fondo.
+
+            Llevaba TRES oscurecimientos encima —el damero oscuro, un
+            `brightness(0.4)` y un velo negro al 88 %— y eso lo dejaba en negro
+            liso. Mirando de frente no se nota, porque encima cae la niebla
+            radial de `Corridor` y ahí abajo no hay nada que ver. Pero al entrar
+            a una habitación la cámara gira 58° hacia la puerta y esa misma
+            niebla SE APAGA (`fogO` baja con el giro, porque su centro ya no es
+            el punto de fuga): entonces el fondo queda descubierto, ocupando un
+            tercio del cuadro, plano y con canto duro contra la pared iluminada.
+            Se lee como un boquete, no como el final de un pasillo. Medido: 19 %
+            del cuadro al entrar a Contacto, 10 % en Blog, 9 % en Experiencia.
+
+            El arreglo NO es geometría —hay pasillo de sobra por delante en casi
+            todas las puertas— sino dejar de oscurecerlo dos veces: la niebla ya
+            hace ese trabajo cuando toca. Con el damero a la vista el ojo lee
+            una superficie que se aleja, que es lo que es. El techo usa el mismo
+            `darkChk` sin filtro ni velo y siempre se leyó bien. */}
+        <Plane w={w} h={h} t={`translate3d(${-wallX}px, ${-floorY}px, ${-depth + 40}px)`}
+               style={{...darkChk, filter:'brightness(0.62)'}}>
+          <div style={{position:'absolute', inset:0, background:'rgba(3,9,16,0.55)'}}/>
         </Plane>
   </>;
 }
